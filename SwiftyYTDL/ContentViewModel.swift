@@ -90,7 +90,7 @@ class ContentViewModel: ObservableObject {
             do {
                 handle.status = .loading
                 try YTDL.shared.download(
-                    from: url, playlistIdx: playlistIdx,
+                    from: url, formatId: item.formatId, playlistIdx: playlistIdx,
                     updateHandler: { downloadedBytes, totalBytes in
                         handle.totalBytesWritten = downloadedBytes
                         handle.totalBytesExpectedToWrite = totalBytes

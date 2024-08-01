@@ -21,6 +21,9 @@ public class YTDL {
     
     public static let shared = YTDL()
 
+    private static let defaultVideoFormatStr: String = "bv[ext=mp4][protocol=https][format_note!=Premium]"
+    private static let preferredVideoFormatHeights: [Int] = [1080, 720, 480, 360, 240, 144]
+
     public var version: String!
     private var yt_dlp: PythonObject!
     
@@ -91,13 +94,6 @@ public class YTDL {
             atomically: true,
             encoding: .utf8
         )
-    }
-
-    enum YTDLDefaults {
-        static let options: PythonObject = [
-            "format": "best",
-            "outtmpl": "%(id)s.%(ext)s"
-        ]
     }
     
     private var ytdlPythonExecScript: String { "yt-dlp" }
@@ -206,11 +202,19 @@ public class YTDL {
         }.pythonObject
     }
     
-    public func download(from url: URL, playlistIdx: Int = 1,
+    public func download(from url: URL,
+                         formatId: String,
+                         playlistIdx: Int = 1,
                          updateHandler: @escaping ProgressUpdate,
                          completionHandler: @escaping ProgressCompletion) throws {
+        if let formatStr = formatId {
+            formatStr += "+ba"
+        } else {
+            formatStr = String(format: "%s+ba", defaultVideoFormatStr)
+        }
+
         let options: PythonObject = [
-            "format": "best",
+            "format": formatStr,
             "nocheckcertificate": true,
             "outtmpl": "%(id)s.%(ext)s",
             "progress_hooks": [statusCallback(updateHandler, completionHandler)],
@@ -226,7 +230,6 @@ public class YTDL {
     
     public func extractInfo(from url: URL) throws -> [Downloadable] {
         let options: PythonObject = [
-            "format": "best",
             "nocheckcertificate": true,
         ]
         let ydl = yt_dlp.YoutubeDL(options)
@@ -258,7 +261,13 @@ public class YTDL {
             let title = info.checking["title"].flatMap({ String($0) })
         else { throw "Failed to get `id` or `title`" }
 
-        let formatSel = ydl.build_format_selector(YTDLDefaults.options["format"])
+        var formatStr : String = ""
+        for height in preferredVideoFormatHeights {
+            formatStr += String(format: "%s[height=%u],", defaultVideoFormatStr, height)
+        }
+        formatStr += String(format: "/%s", defaultVideoFormatStr)
+
+        let formatSel = ydl.build_format_selector(formatStr)
         let formats = try formatSel.throwing.dynamicallyCall(withArguments: info)
 
         var results: [Format] = []
@@ -271,12 +280,17 @@ public class YTDL {
                 .flatMap({ Int64($0) })
             let fileSizeApprox = format.checking["filesize_approx"]
                 .flatMap({ Int64($0) })
+            let formatId = format.checking["format_id"]
+                .flatMap({ String($0) })
             
             let result = Format(
-                id: id, title: title,
+                id: id,
+                title: title,
                 browserUrl: browserUrl,
-                width: width, height: height,
-                fileSize: fileSize ?? fileSizeApprox
+                width: width,
+                height: height,
+                fileSize: fileSize ?? fileSizeApprox,
+                formatId: formatId
             )
             results.append(result)
         }
@@ -339,6 +353,7 @@ public protocol Downloadable: CustomStringConvertible {
     var width: UInt? { get }
     var height: UInt? { get }
     var fileSize: Int64? { get }
+    var formatId: String? { get }
     
     var isUniqueTitle: Bool { get }
 
@@ -393,6 +408,7 @@ public struct Format: Downloadable {
     public let width: UInt?
     public let height: UInt?
     public let fileSize: Int64?
+    public let formatId: String?
     
     public var isUniqueTitle: Bool { false }
 
