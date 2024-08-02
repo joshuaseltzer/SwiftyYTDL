@@ -203,18 +203,19 @@ public class YTDL {
     }
     
     public func download(from url: URL,
-                         formatId: String,
+                         formatId: String?,
                          playlistIdx: Int = 1,
                          updateHandler: @escaping ProgressUpdate,
                          completionHandler: @escaping ProgressCompletion) throws {
-        if let formatStr = formatId {
-            formatStr += "+ba"
+        var formatStr: String
+        if formatId != nil {
+            formatStr = formatId! + "+ba"
         } else {
-            formatStr = String(format: "%s+ba", defaultVideoFormatStr)
+            formatStr = String(format: "%@+ba", YTDL.defaultVideoFormatStr)
         }
 
         let options: PythonObject = [
-            "format": formatStr,
+            "format": PythonObject(formatStr),
             "nocheckcertificate": true,
             "outtmpl": "%(id)s.%(ext)s",
             "progress_hooks": [statusCallback(updateHandler, completionHandler)],
@@ -230,6 +231,7 @@ public class YTDL {
     
     public func extractInfo(from url: URL) throws -> [Downloadable] {
         let options: PythonObject = [
+            "format": PythonObject(YTDL.defaultVideoFormatStr),
             "nocheckcertificate": true,
         ]
         let ydl = yt_dlp.YoutubeDL(options)
@@ -262,10 +264,11 @@ public class YTDL {
         else { throw "Failed to get `id` or `title`" }
 
         var formatStr : String = ""
-        for height in preferredVideoFormatHeights {
-            formatStr += String(format: "%s[height=%u],", defaultVideoFormatStr, height)
+        for height in YTDL.preferredVideoFormatHeights {
+            formatStr += String(format: "%@[height=%u],", YTDL.defaultVideoFormatStr, height)
         }
-        formatStr += String(format: "/%s", defaultVideoFormatStr)
+        formatStr = String(formatStr.dropLast())
+        formatStr += String(format: "/%@", YTDL.defaultVideoFormatStr)
 
         let formatSel = ydl.build_format_selector(formatStr)
         let formats = try formatSel.throwing.dynamicallyCall(withArguments: info)
@@ -321,10 +324,13 @@ public class YTDL {
                 .flatMap({ Int64($0) })
 
             let result = PlaylistEntry(
-                id: id, title: title,
+                id: id,
+                title: title,
                 browserUrl: browserUrl,
-                width: width, height: height,
-                fileSize: fileSize ?? fileSizeApprox
+                width: width,
+                height: height,
+                fileSize: fileSize ?? fileSizeApprox,
+                formatId: nil
             )
             results.append(result)
         }
@@ -395,6 +401,7 @@ public struct PlaylistEntry: Downloadable {
     public let width: UInt?
     public let height: UInt?
     public let fileSize: Int64?
+    public let formatId: String?
     
     public var isUniqueTitle: Bool { true }
     

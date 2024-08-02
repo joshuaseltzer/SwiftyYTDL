@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>PYTHON_VER</key>
-	<string>0.0.0</string>
+	<string>3.9.12</string>
 	<key>YT_DLP_VER</key>
-	<string>0.0.0</string>
+	<string>2024.08.01</string>
 </dict>
 </plist>
