@@ -63,7 +63,8 @@ class ContentViewModel: ObservableObject {
     }
     
     func download(_ item: Downloadable,
-                  from url: URL, playlistIdx: Int = 1,
+                  from url: URL,
+                  playlistIdx: Int = 1,
                   update: @escaping (Int64?, Int64?) -> Void,
                   completion: @escaping (Result<Bool, Error>) -> Void) {
         let handle = DownloadHandler(item)
@@ -90,7 +91,9 @@ class ContentViewModel: ObservableObject {
             do {
                 handle.status = .loading
                 try YTDL.shared.download(
-                    from: url, formatId: item.formatId, playlistIdx: playlistIdx,
+                    from: url,
+                    formatStr: item.formatStr,
+                    playlistIdx: playlistIdx,
                     updateHandler: { downloadedBytes, totalBytes in
                         handle.totalBytesWritten = downloadedBytes
                         handle.totalBytesExpectedToWrite = totalBytes
@@ -102,8 +105,15 @@ class ContentViewModel: ObservableObject {
                         case .success(let fileURL):
                             handle.status = .finished
                             do {
-                                try PhotosManager.saveToPhotos(at: fileURL)
-                                handle.finishSubject.send(.success(true))
+                                switch handle.item.formatType {
+                                case .video:
+                                    // download the audio track for this video
+                                case .audio:
+                                    // use ffmpeg to combine the video and audio files
+                                case .both:
+                                    try PhotosManager.saveToPhotos(at: fileURL)
+                                    handle.finishSubject.send(.success(true))
+                                }
                             } catch {
                                 handle.finishSubject.send(.failure(error))
                             }

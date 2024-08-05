@@ -155,6 +155,9 @@ public class YTDL {
             throw "Failed to import 'yt-dlp'"
         }
 
+        // Ensure ffmpeg support is explicitly disabled
+        module.postprocessor.FFmpegPostProcessor.available = false
+
         print("yt-dlp: \(version)")
         self.version = version
         self.yt_dlp = module
@@ -203,17 +206,10 @@ public class YTDL {
     }
     
     public func download(from url: URL,
-                         formatId: String?,
+                         formatStr: String,
                          playlistIdx: Int = 1,
                          updateHandler: @escaping ProgressUpdate,
                          completionHandler: @escaping ProgressCompletion) throws {
-        var formatStr: String
-        if formatId != nil {
-            formatStr = formatId! + "+ba"
-        } else {
-            formatStr = String(format: "%@+ba", YTDL.defaultVideoFormatStr)
-        }
-
         let options: PythonObject = [
             "format": PythonObject(formatStr),
             "nocheckcertificate": true,
@@ -249,7 +245,7 @@ public class YTDL {
                 throw "Unsupported `type`: \(type)"
             }
         } else if let _ = info.checking["formats"] {
-            return try formats(from: info, ydl: ydl, browserUrl: url)
+            return try videoFormats(from: info, ydl: ydl, browserUrl: url)
         }
         
         throw "Unsupported `url`: \(url)"
@@ -257,7 +253,7 @@ public class YTDL {
     
     // MARK: -
     
-    private func formats(from info: PythonObject, ydl: PythonObject, browserUrl: URL) throws -> [Format] {
+    private func videoFormats(from info: PythonObject, ydl: PythonObject, browserUrl: URL) throws -> [Format] {
         guard
             let id = info.checking["id"].flatMap({ String($0) }),
             let title = info.checking["title"].flatMap({ String($0) })
@@ -283,17 +279,18 @@ public class YTDL {
                 .flatMap({ Int64($0) })
             let fileSizeApprox = format.checking["filesize_approx"]
                 .flatMap({ Int64($0) })
-            let formatId = format.checking["format_id"]
+            let formatStr = format.checking["format_id"]
                 .flatMap({ String($0) })
             
             let result = Format(
                 id: id,
                 title: title,
                 browserUrl: browserUrl,
+                formatStr: formatStr,
+                formatType: FormatType.video,
                 width: width,
                 height: height,
-                fileSize: fileSize ?? fileSizeApprox,
-                formatId: formatId
+                fileSize: fileSize ?? fileSizeApprox
             )
             results.append(result)
         }
@@ -327,10 +324,11 @@ public class YTDL {
                 id: id,
                 title: title,
                 browserUrl: browserUrl,
+                formatStr: "best",
+                formatType: FormatType.both,
                 width: width,
                 height: height,
-                fileSize: fileSize ?? fileSizeApprox,
-                formatId: nil
+                fileSize: fileSize ?? fileSizeApprox
             )
             results.append(result)
         }
@@ -356,10 +354,11 @@ public protocol Downloadable: CustomStringConvertible {
     var id: String { get }
     var title: String { get }
     var browserUrl: URL { get }
+    var formatStr: String { get }
+    var formatType: FormatType { get }
     var width: UInt? { get }
     var height: UInt? { get }
     var fileSize: Int64? { get }
-    var formatId: String? { get }
     
     var isUniqueTitle: Bool { get }
 
@@ -398,10 +397,11 @@ public struct PlaylistEntry: Downloadable {
     public let id: String
     public let title: String
     public let browserUrl: URL
+    public let formatStr: String
+    public let formatType: FormatType
     public let width: UInt?
     public let height: UInt?
     public let fileSize: Int64?
-    public let formatId: String?
     
     public var isUniqueTitle: Bool { true }
     
@@ -412,11 +412,18 @@ public struct Format: Downloadable {
     public let id: String
     public let title: String
     public let browserUrl: URL
+    public let formatStr: String
+    public let formatType: FormatType
     public let width: UInt?
     public let height: UInt?
     public let fileSize: Int64?
-    public let formatId: String?
     
     public var isUniqueTitle: Bool { false }
 
+}
+
+enum FormatType: String {
+    case video
+    case audio
+    case both
 }

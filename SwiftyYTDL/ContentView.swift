@@ -139,7 +139,8 @@ struct ContentView: View {
                     }
 
                     viewModel.download(
-                        item, from: item.browserUrl,
+                        item,
+                        from: item.browserUrl,
                         playlistIdx: idx + 1,
                         update: { _, _ in }
                     ) { result in
