@@ -354,7 +354,7 @@ public protocol Downloadable: CustomStringConvertible {
     var id: String { get }
     var title: String { get }
     var browserUrl: URL { get }
-    var formatStr: String { get }
+    var formatStr: String? { get }
     var formatType: FormatType { get }
     var width: UInt? { get }
     var height: UInt? { get }
@@ -397,7 +397,7 @@ public struct PlaylistEntry: Downloadable {
     public let id: String
     public let title: String
     public let browserUrl: URL
-    public let formatStr: String
+    public let formatStr: String?
     public let formatType: FormatType
     public let width: UInt?
     public let height: UInt?
@@ -412,7 +412,7 @@ public struct Format: Downloadable {
     public let id: String
     public let title: String
     public let browserUrl: URL
-    public let formatStr: String
+    public let formatStr: String?
     public let formatType: FormatType
     public let width: UInt?
     public let height: UInt?
@@ -422,7 +422,7 @@ public struct Format: Downloadable {
 
 }
 
-enum FormatType: String {
+public enum FormatType: String {
     case video
     case audio
     case both

@@ -92,7 +92,7 @@ class ContentViewModel: ObservableObject {
                 handle.status = .loading
                 try YTDL.shared.download(
                     from: url,
-                    formatStr: item.formatStr,
+                    formatStr: item.formatStr!,
                     playlistIdx: playlistIdx,
                     updateHandler: { downloadedBytes, totalBytes in
                         handle.totalBytesWritten = downloadedBytes
@@ -108,8 +108,10 @@ class ContentViewModel: ObservableObject {
                                 switch handle.item.formatType {
                                 case .video:
                                     // download the audio track for this video
+                                    handle.status = .error
                                 case .audio:
                                     // use ffmpeg to combine the video and audio files
+                                    handle.status = .error
                                 case .both:
                                     try PhotosManager.saveToPhotos(at: fileURL)
                                     handle.finishSubject.send(.success(true))
